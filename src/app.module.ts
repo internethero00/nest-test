@@ -3,8 +3,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createKeyv } from '@keyv/redis';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ArticlesModule } from './articles/articles.module';
 import { AuthModule } from './auth/auth.module';
 import { buildDataSourceOptions } from './config/typeorm.config';
@@ -37,7 +35,5 @@ import { buildDataSourceOptions } from './config/typeorm.config';
     AuthModule,
     ArticlesModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

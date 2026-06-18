@@ -1,6 +1,5 @@
 import { DataSourceOptions } from 'typeorm';
 
-
 export const buildDataSourceOptions = (
   get: (key: string) => string | undefined,
 ): DataSourceOptions => ({

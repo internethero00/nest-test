@@ -21,7 +21,12 @@ export class User {
   name: string;
 
   /** bcrypt hash of the current refresh token; null when logged out. Never selected by default. */
-  @Column({ name: 'hashed_refresh_token', type: 'varchar', nullable: true, select: false })
+  @Column({
+    name: 'hashed_refresh_token',
+    type: 'varchar',
+    nullable: true,
+    select: false,
+  })
   hashedRefreshToken!: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

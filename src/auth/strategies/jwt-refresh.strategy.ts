@@ -4,16 +4,12 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { REFRESH_COOKIE_NAME } from '../refresh-cookie';
-import {
-  AuthUserWithRefreshToken,
-  JwtPayload,
-} from '../jwt-payload.interface';
+import { AuthUserWithRefreshToken, JwtPayload } from '../jwt-payload.interface';
 
 /** Reads the refresh token from the httpOnly cookie. */
 const cookieExtractor = (req: Request): string | null =>
-  (req?.cookies as Record<string, string> | undefined)?.[
-    REFRESH_COOKIE_NAME
-  ] ?? null;
+  (req?.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE_NAME] ??
+  null;
 
 /**
  * Validates the refresh token (read from the httpOnly cookie) against the

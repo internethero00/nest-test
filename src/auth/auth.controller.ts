@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuthResult, AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -24,6 +25,7 @@ import type {
   AuthUserWithRefreshToken,
 } from './jwt-payload.interface';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -32,6 +34,9 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiOperation({
+    summary: 'Register a new user; sets the refresh token httpOnly cookie',
+  })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
@@ -41,6 +46,9 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Log in; sets the refresh token httpOnly cookie',
+  })
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -54,6 +62,9 @@ export class AuthController {
    */
   @Post('refresh')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Rotate tokens using the refresh token cookie',
+  })
   @UseGuards(JwtRefreshGuard)
   async refresh(
     @CurrentUser() user: AuthUserWithRefreshToken,
@@ -68,18 +79,25 @@ export class AuthController {
   /** Server-side logout: invalidates the stored refresh token and clears the cookie. */
   @Post('logout')
   @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Log out; invalidates the refresh token' })
   @UseGuards(JwtAuthGuard)
   async logout(
     @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logout(user.id);
-    res.clearCookie(REFRESH_COOKIE_NAME, buildRefreshCookieOptions(this.config));
+    res.clearCookie(
+      REFRESH_COOKIE_NAME,
+      buildRefreshCookieOptions(this.config),
+    );
     return { success: true };
   }
 
   /** Returns the currently authenticated user (useful for verifying a token). */
   @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the currently authenticated user' })
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthUser) {
     return user;

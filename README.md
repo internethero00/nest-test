@@ -1,98 +1,274 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Articles API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API на **NestJS** с аутентификацией (JWT + refresh-токен в httpOnly-куке), CRUD для статей,
+хранением в **PostgreSQL** (TypeORM + миграции) и кэшированием в **Redis**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Проект выполнен по тестовому заданию (см. [task.txt](task.txt)).
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Содержание
 
-## Project setup
+- [Стек](#стек)
+- [Реализованная функциональность](#реализованная-функциональность)
+- [Структура проекта](#структура-проекта)
+- [Требования](#требования)
+- [Быстрый старт](#быстрый-старт)
+- [Переменные окружения](#переменные-окружения)
+- [Миграции](#миграции)
+- [Запуск](#запуск)
+- [Документация API (Swagger)](#документация-api-swagger)
+- [Примеры запросов](#примеры-запросов)
+- [Кэширование](#кэширование)
+- [Тесты](#тесты)
+- [CI](#ci)
 
-```bash
-$ npm install
+---
+
+## Стек
+
+| Назначение            | Технология                                    |
+| --------------------- | --------------------------------------------- |
+| Фреймворк             | NestJS 11                                      |
+| Язык                  | TypeScript                                     |
+| База данных           | PostgreSQL 16 + TypeORM (миграции)             |
+| Кэш                   | Redis 7 (`@nestjs/cache-manager` + `@keyv/redis`) |
+| Аутентификация        | Passport JWT (access) + refresh-токен в httpOnly-куке |
+| Валидация             | `class-validator` / `class-transformer`        |
+| Документация          | Swagger (OpenAPI) на `/docs`                   |
+| Тесты                 | Jest                                           |
+
+---
+
+## Реализованная функциональность
+
+Соответствие пунктам тестового задания:
+
+1. **Аутентификация** — регистрация и логин, JWT access-токен; дополнительно refresh-токен
+   с **ротацией** и серверным logout (хэш refresh-токена хранится в БД), refresh передаётся
+   в **httpOnly-куке** (защита от XSS), `SameSite=lax` (защита от CSRF).
+2. **PostgreSQL + TypeORM** — соединение настроено через `ConfigService`, структура БД
+   управляется **миграциями** (`synchronize: false`).
+3. **CRUD «Статья»** — поля `title`, `description`, `publicationDate`, `author`;
+   валидация входных данных, **пагинация**, **фильтрация** по автору и диапазону дат публикации;
+   создание/обновление/удаление закрыты авторизацией (обновление и удаление — только автором).
+4. **Кэширование Redis** — кэш на чтение статей (одиночные и списки) с **инвалидацией**
+   при создании/обновлении/удалении.
+5. **Тесты** — unit-тесты бизнес-логики (`AuthService`, `ArticlesService`).
+
+---
+
+## Структура проекта
+
+```
+src/
+├── app.module.ts            # корневой модуль: Config, TypeORM, Cache(Redis), Auth, Articles
+├── main.ts                  # bootstrap: ValidationPipe, cookie-parser, Swagger
+├── config/
+│   └── typeorm.config.ts     # билдер опций TypeORM (общий для Nest и CLI)
+├── database/
+│   ├── data-source.ts        # DataSource для TypeORM CLI (миграции)
+│   └── migrations/           # миграции
+├── users/                    # сущность User + UsersService
+├── auth/                     # JWT-стратегии, guards, AuthService/Controller
+└── articles/                 # сущность Article + CRUD + кэширование
 ```
 
-## Compile and run the project
+---
+
+## Требования
+
+- Node.js 20+
+- Docker (для PostgreSQL и Redis) — либо локально установленные PostgreSQL и Redis
+
+---
+
+## Быстрый старт
 
 ```bash
-# development
-$ npm run start
+# 1. Установить зависимости
+npm install
 
-# watch mode
-$ npm run start:dev
+# 2. Создать .env (можно скопировать пример)
+cp .env.example .env
 
-# production mode
-$ npm run start:prod
+# 3. Поднять PostgreSQL и Redis
+docker compose up -d
+
+# 4. Применить миграции
+npm run migration:run
+
+# 5. Запустить приложение в dev-режиме
+npm run start:dev
 ```
 
-## Run tests
+Приложение поднимется на `http://localhost:3000`, Swagger — на `http://localhost:3000/docs`.
+
+---
+
+## Переменные окружения
+
+См. [.env.example](.env.example):
+
+| Переменная               | По умолчанию            | Описание                          |
+| ------------------------ | ----------------------- | --------------------------------- |
+| `PORT`                   | `3000`                  | Порт приложения                   |
+| `DB_HOST`                | `localhost`             | Хост PostgreSQL                   |
+| `DB_PORT`                | `5432`                  | Порт PostgreSQL                   |
+| `DB_USERNAME`            | `postgres`              | Пользователь БД                   |
+| `DB_PASSWORD`            | `postgres`              | Пароль БД                         |
+| `DB_NAME`                | `nest_test`             | Имя БД                            |
+| `REDIS_HOST`             | `localhost`             | Хост Redis                        |
+| `REDIS_PORT`             | `6379`                  | Порт Redis                        |
+| `CACHE_TTL`              | `60000`                 | TTL кэша, мс                      |
+| `JWT_SECRET`             | —                       | Секрет access-токена              |
+| `JWT_EXPIRES_IN`         | `900s`                  | Время жизни access-токена         |
+| `JWT_REFRESH_SECRET`     | —                       | Секрет refresh-токена             |
+| `JWT_REFRESH_EXPIRES_IN` | `7d`                    | Время жизни refresh-токена        |
+
+---
+
+## Миграции
 
 ```bash
-# unit tests
-$ npm run test
+# Сгенерировать миграцию по изменениям сущностей
+npm run migration:generate src/database/migrations/MyMigration
 
-# e2e tests
-$ npm run test:e2e
+# Создать пустую миграцию
+npm run migration:create src/database/migrations/MyMigration
 
-# test coverage
-$ npm run test:cov
+# Применить миграции
+npm run migration:run
+
+# Откатить последнюю
+npm run migration:revert
 ```
 
-## Deployment
+Структура БД меняется только через миграции (`synchronize: false`).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Запуск
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start          # обычный запуск
+npm run start:dev      # watch-режим
+npm run build          # сборка в dist/
+npm run start:prod     # запуск собранного (node dist/main)
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Документация API (Swagger)
 
-Check out a few resources that may come in handy when working with NestJS:
+После запуска доступна по адресу **`http://localhost:3000/docs`**.
+JSON-спека OpenAPI — `http://localhost:3000/docs-json`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Для защищённых эндпоинтов нажмите **Authorize** и вставьте access-токен (Bearer).
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Примеры запросов
 
-## Stay in touch
+### Регистрация
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```http
+POST /auth/register
+Content-Type: application/json
 
-## License
+{ "email": "user@test.io", "name": "User", "password": "secret123" }
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Ответ `201` (refresh-токен ставится в httpOnly-куке `refresh_token`):
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "user": { "id": "uuid", "email": "user@test.io", "name": "User" }
+}
+```
+
+### Логин
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{ "email": "user@test.io", "password": "secret123" }
+```
+
+### Обновление токенов (ротация)
+
+```http
+POST /auth/refresh
+Cookie: refresh_token=<значение из куки>
+```
+
+### Создание статьи (требует авторизации)
+
+```http
+POST /articles
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{ "title": "My article", "description": "Body", "publicationDate": "2026-06-01T00:00:00Z" }
+```
+
+### Список статей с пагинацией и фильтрами (публично)
+
+```http
+GET /articles?page=1&limit=10&order=DESC&authorId=<uuid>&publishedFrom=2026-01-01&publishedTo=2026-12-31
+```
+
+Ответ:
+
+```json
+{
+  "data": [ { "id": "uuid", "title": "My article", "...": "..." } ],
+  "meta": { "total": 1, "page": 1, "limit": 10, "totalPages": 1 }
+}
+```
+
+### Обновление / удаление (требует авторизации, только автор)
+
+```http
+PATCH  /articles/:id     # Authorization: Bearer <accessToken>
+DELETE /articles/:id     # Authorization: Bearer <accessToken>
+```
+
+---
+
+## Кэширование
+
+- **Чтение** статей кэшируется в Redis:
+  - одиночная статья — ключ `article:<id>`;
+  - список — ключ `articles:list:v<версия>:<хэш фильтров>`.
+- **Инвалидация** при записи:
+  - `update`/`remove` удаляют ключ `article:<id>`;
+  - `create`/`update`/`remove` инкрементят версию списков (`articles:list:version`),
+    из-за чего ранее закэшированные списки становятся недостижимыми и истекают по TTL.
+    Такой приём избавляет от удаления ключей по паттерну в Redis.
+
+---
+
+## Тесты
+
+```bash
+npm test            # unit-тесты
+npm run test:cov    # с покрытием
+```
+
+Покрыта бизнес-логика `AuthService` (регистрация/логин/refresh/logout) и `ArticlesService`
+(CRUD, попадание/промах кэша, инвалидация, проверка владельца). Зависимости (репозиторий,
+кэш, JWT, bcrypt) замоканы, поэтому тесты не требуют запущенных БД и Redis.
+
+---
+
+## CI
+
+GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) на каждый push/PR:
+
+1. `npm ci` — установка зависимостей;
+2. `npm run lint:check` — проверка линтером (без автофикса);
+3. `npm run build` — сборка;
+4. `npm test` — unit-тесты.

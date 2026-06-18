@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
@@ -19,8 +20,18 @@ async function bootstrap() {
     }),
   );
 
+  // OpenAPI / Swagger documentation, served at /docs.
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Articles API')
+    .setDescription('REST API with JWT auth, articles CRUD and Redis caching')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
+
   const config = app.get(ConfigService);
   const port = config.get<number>('PORT') ?? 3000;
   await app.listen(port);
 }
-bootstrap();
+void bootstrap();
